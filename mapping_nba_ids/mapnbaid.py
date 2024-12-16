@@ -423,6 +423,29 @@ class MergePlayerID(object):
 
         return merge_df
 
+    def merge_from_dict(self, merge_df: pd.DataFrame) -> pd.DataFrame:
+
+        comp_dict = (
+            self.non_merge_nbastats
+            .assign(bbref_id = lambda df_: [self._mapping_dict(x) for x in df_.PERSON_ID])
+            .pipe(lambda df_: df_.merge(self.non_merge_bbref, how="left", on="bbref_id"))
+            .pipe(lambda df_: df_.loc[:, ["PERSON_ID", "DISPLAY_FIRST_LAST", "FROM_YEAR", "TO_YEAR", "name", "url",
+                                          "bbref_id", "from_year", "to_year"]])
+            .assign(
+                url=lambda df_: [
+                    "/".join(["https://www.basketball-reference.com/players", x[0], x + ".html"])
+                    if isinstance(x, str) else None
+                    for x in df_.bbref_id
+                ]
+            )
+        )
+
+        merge_df = pd.concat([merge_df, comp_dict], axis=0, ignore_index=True)
+
+        self.upd_non_merge(merge_df)
+
+        return merge_df.drop(columns=["FROM_YEAR", "TO_YEAR", "from_year", "to_year"])
+
     def upd_non_merge(self, merge_df: pd.DataFrame) -> None:
         merge_bbref_id = merge_df.bbref_id
         merge_person_id = merge_df.PERSON_ID
