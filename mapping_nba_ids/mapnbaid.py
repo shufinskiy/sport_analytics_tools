@@ -153,6 +153,45 @@ class MergePlayerID(object):
 
         return merge_df
 
+    def merge_double(self, merge_df: pd.DataFrame) -> pd.DataFrame:
+        merge_double = (
+            self.double_df
+            .pipe(lambda df_: df_.loc[:, ["PERSON_ID", "DISPLAY_FIRST_LAST", "FROM_YEAR", "TO_YEAR"]])
+            .astype({'FROM_YEAR': 'int', 'TO_YEAR': 'int'})
+            .pipe(lambda df_: df_.merge(self.non_merge_bbref,
+                                        how="left",
+                                        left_on=["DISPLAY_FIRST_LAST", "FROM_YEAR", "TO_YEAR"],
+                                        right_on=["name", "from_year", "to_year"]
+                                        ))
+        )
+
+        non_match = merge_double.loc[pd.isna(merge_double.name), ["PERSON_ID", "DISPLAY_FIRST_LAST", "FROM_YEAR", "TO_YEAR"]]
+        self.full_coincidence_df = (
+            merge_double
+            .pipe(lambda df_: df_.merge((
+                df_
+                .groupby(["PERSON_ID"], as_index=False)["TO_YEAR"]
+                .count()
+                .pipe(lambda df_: df_.loc[df_.TO_YEAR > 1, "PERSON_ID"])
+            ), how="inner", on="PERSON_ID"))
+            .loc[:, ["PERSON_ID", "DISPLAY_FIRST_LAST", "FROM_YEAR", "TO_YEAR"]]
+            .drop_duplicates()
+            .reset_index(drop=True)
+        )
+
+        non_ids = non_match.PERSON_ID.to_list() + self.full_coincidence_df.PERSON_ID.to_list()
+
+        merge_df = pd.concat([merge_df, merge_double.loc[~merge_double.PERSON_ID.isin(non_ids)]],
+                             axis=0, ignore_index=True)
+        self.upd_non_merge(merge_df)
+
+        merge_non_match = non_match.merge(self.non_merge_bbref, how="left", left_on="DISPLAY_FIRST_LAST", right_on="name")
+        merge_df = pd.concat([merge_df, merge_non_match], axis=0, ignore_index=True)
+
+        self.upd_non_merge(merge_df)
+
+        return merge_df
+
     def upd_non_merge(self, merge_df: pd.DataFrame) -> None:
         merge_bbref_id = merge_df.bbref_id
         merge_person_id = merge_df.PERSON_ID
