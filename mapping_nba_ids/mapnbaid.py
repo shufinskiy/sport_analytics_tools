@@ -1,6 +1,7 @@
 from string import ascii_lowercase
 from pathlib import Path
 from typing import Optional
+from itertools import product
 
 import requests
 from bs4 import BeautifulSoup
@@ -192,6 +193,64 @@ class MergePlayerID(object):
 
         return merge_df
 
+    def merge_non_english(self, merge_df: pd.DataFrame) -> pd.DataFrame:
+        non_eng_idx = np.array([self._detect_non_english(x) for x in self.non_merge_bbref.name])
+        non_eng = self.non_merge_bbref.iloc[non_eng_idx].reset_index(drop=True)
+        non_eng["non_english_count"] = [self._count_non_english(x) for x in non_eng.name]
+        non_eng["name_lower"] = [x.lower() for x in non_eng["name"]]
+
+        check_non_eng = (
+            self.non_merge_nbastats
+            .pipe(lambda df_: df_.merge(non_eng, how="inner", left_on="DISPLAY_FIRST_LAST", right_on="name"))
+            .loc[:, ["PERSON_ID", "DISPLAY_FIRST_LAST", "FROM_YEAR", "TO_YEAR",
+                     "name", "url", "bbref_id", "from_year", "to_year"]]
+        )
+
+        if check_non_eng.shape[0] != 0:
+            merge_df = pd.concat([merge_df, check_non_eng], axis=0, ignore_index=True)
+            self.upd_non_merge(merge_df)
+
+        transform_nbastats = (
+            self.non_merge_nbastats
+            .assign(
+                name_lower=lambda df_: [x.lower() for x in df_.DISPLAY_FIRST_LAST],
+            )
+            .loc[:, ["PERSON_ID", "DISPLAY_FIRST_LAST", "FROM_YEAR", "TO_YEAR", "name_lower"]]
+        )
+
+        cnt_sym = np.sort(np.unique(non_eng.non_english_count))
+        prod_dict = {key: list(product(*[list(ascii_lowercase) for _ in range(key)])) for key in cnt_sym}
+        eng = np.hstack((np.arange(65, 91), np.arange(97, 123), np.array([32, 45, 46])))
+
+        for i, row in enumerate(non_eng.itertuples()):
+            n = np.array([ord(x) in eng for x in row.name_lower])
+            if row.non_english_count == 1:
+                replace_idx = np.where(n == False)[0]
+            else:
+                replace_idx = np.where(n == False)[0]
+            for sym_cand in prod_dict[row.non_english_count]:
+                name_ = list(row.name_lower)
+                for pos in range(len(sym_cand)):
+                    name_[replace_idx[pos]] = sym_cand[pos]
+                    new_name = "".join(name_)
+                check_idx = transform_nbastats.loc[transform_nbastats["name_lower"] == new_name].index
+                if len(check_idx) == 0:
+                    continue
+                else:
+                    non_eng.iloc[i, 6] = new_name
+                    break
+
+        merge_non_eng = (
+            non_eng
+            .pipe(lambda df_: df_.merge(transform_nbastats, how="inner", on="name_lower"))
+            .loc[:, ["PERSON_ID", "DISPLAY_FIRST_LAST", "FROM_YEAR", "TO_YEAR",
+                     "name", "url", "bbref_id", "from_year", "to_year"]]
+        )
+        merge_df = pd.concat([merge_df, merge_non_eng], axis=0, ignore_index=True)
+        self.upd_non_merge(merge_df)
+
+        return merge_df
+
     def upd_non_merge(self, merge_df: pd.DataFrame) -> None:
         merge_bbref_id = merge_df.bbref_id
         merge_person_id = merge_df.PERSON_ID
@@ -205,3 +264,12 @@ class MergePlayerID(object):
             self.non_merge_nbastats = self.non_merge_nbastats[~self.non_merge_nbastats.PERSON_ID.isin(merge_person_id)].reset_index(drop=True)
         else:
             self.non_merge_nbastats = self.nbastats.loc[~self.nbastats.PERSON_ID.isin(merge_person_id)].reset_index(drop=True)
+
+    @staticmethod
+    def _detect_non_english(names: str) -> bool:
+        ord_name = not all([ord(x) in ENGLISH for x in names])
+        return ord_name
+
+    @staticmethod
+    def _count_non_english(names: str) -> int:
+        return np.sum([ord(x) not in ENGLISH for x in names])
