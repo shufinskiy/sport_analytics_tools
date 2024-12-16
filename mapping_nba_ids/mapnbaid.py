@@ -339,6 +339,90 @@ class MergePlayerID(object):
 
         return merge_df
 
+    def merge_wo_punctuation(self, merge_df: pd.DataFrame) -> pd.DataFrame:
+        nba_letters = (
+            self.non_merge_nbastats
+            .assign(
+                ONLY_LETTER=lambda df_: [re.sub(r'[^a-zA-Z]', "", re.sub(" I$| II$| III$| IV$| V$", "", x)).lower() for
+                                         x in df_.DISPLAY_FIRST_LAST])
+        )
+
+        bbref_letters = (
+            self.non_merge_bbref
+            .assign(only_letter=lambda df_: [re.sub(r'[^a-zA-Z]', '', x).lower() for x in df_.name])
+        )
+
+        comp_letter = (
+            nba_letters
+            .pipe(lambda df_: df_.loc[:, ["PERSON_ID", "DISPLAY_FIRST_LAST", "FROM_YEAR", "TO_YEAR", "ONLY_LETTER"]])
+            .pipe(lambda df_: df_.merge(bbref_letters, how="inner", left_on="ONLY_LETTER", right_on="only_letter"))
+            .pipe(lambda df_: df_.loc[~df_["PERSON_ID"].isin([203183, 203502])])
+            .reset_index(drop=True)
+        )
+
+        merge_df = pd.concat([merge_df, comp_letter.drop(columns=["ONLY_LETTER", "only_letter"])], axis=0, ignore_index=True)
+
+        self.upd_non_merge(merge_df)
+
+        bbref_letters = (
+            bbref_letters
+            .pipe(lambda df_: df_.loc[~df_.bbref_id.isin(comp_letter.bbref_id)])
+            .reset_index(drop=True)
+        )
+
+        nba_letters = (
+            nba_letters
+            .pipe(lambda df_: df_.loc[~df_.PERSON_ID.isin(comp_letter.PERSON_ID)])
+            .reset_index(drop=True)
+        )
+
+        list_nba_names = nba_letters.ONLY_LETTER.to_list()
+        list_bbref_names = bbref_letters.only_letter.to_list()
+
+        best = []
+        idx_best = []
+        for player in list_nba_names:
+            min_dist = 10000
+            second_min_dist = 10000
+            idx = 0
+            for idx_comp, player_comp in enumerate(list_bbref_names):
+                dist = distance(player, player_comp)
+                if dist <= min_dist:
+                    min_dist = dist
+                    idx = idx_comp
+                elif dist < second_min_dist:
+                    second_min_dist = dist
+                else:
+                    pass
+            best.append(min_dist)
+            idx_best.append(idx)
+
+        comp_lev = (
+            nba_letters
+            .pipe(lambda df_: df_.loc[:, ["PERSON_ID", "DISPLAY_FIRST_LAST", "FROM_YEAR", "TO_YEAR", "ONLY_LETTER"]])
+            .assign(
+                LEN_LETTER=lambda df_: [len(x) for x in df_.ONLY_LETTER],
+                BEST_LEV=best,
+                BEST_IDX=idx_best
+            )
+            .pipe(lambda df_: df_.loc[(df_.BEST_LEV <= 2) & (~df_.PERSON_ID.isin([203183, 203502])),
+            ["PERSON_ID", "DISPLAY_FIRST_LAST",
+             "FROM_YEAR", "TO_YEAR", "BEST_IDX"]])
+            .reset_index(drop=True)
+            .pipe(lambda df_: df_.merge(
+                bbref_letters.assign(IDX=lambda df_: df_.index),
+                how="inner",
+                left_on="BEST_IDX", right_on="IDX"
+            ))
+            .drop(columns=["BEST_IDX", "only_letter", "IDX"])
+        )
+
+        merge_df = pd.concat([merge_df, comp_lev], axis=0, ignore_index=True)
+
+        self.upd_non_merge(merge_df)
+
+        return merge_df
+
     def upd_non_merge(self, merge_df: pd.DataFrame) -> None:
         merge_bbref_id = merge_df.bbref_id
         merge_person_id = merge_df.PERSON_ID
