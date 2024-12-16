@@ -468,3 +468,11 @@ class MergePlayerID(object):
     @staticmethod
     def _count_non_english(names: str) -> int:
         return np.sum([ord(x) not in ENGLISH for x in names])
+
+    @staticmethod
+    def _mapping_dict(person_id: int) -> Optional[str]:
+        try:
+            bbref_id = MAPPING_DICT[person_id]
+        except KeyError:
+            bbref_id = None
+        return bbref_id
