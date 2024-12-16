@@ -251,6 +251,94 @@ class MergePlayerID(object):
 
         return merge_df
 
+    def merge_surname(self, merge_df: pd.DataFrame) -> pd.DataFrame:
+        nbastats_surname = set(
+            self.non_merge_nbastats
+            .assign(
+                CNT_PART = lambda df_: [len(x.split()) for x in df_.DISPLAY_FIRST_LAST],
+                SURNAME=lambda df_: [x.split()[1] if y > 1 else None for x, y in zip(df_.DISPLAY_FIRST_LAST, df_.CNT_PART)]
+            )
+            .groupby("SURNAME", as_index=False)["PERSON_ID"].count()
+            .pipe(lambda df_: df_.loc[df_.PERSON_ID == 1])
+            .reset_index(drop=True)
+            .iloc[:, 0]
+            .to_list()
+        )
+
+        bbref_surname = (
+            self.non_merge_bbref
+            .assign(SURNAME=lambda df_: [x.split()[1] for x in df_.name])
+            .groupby("SURNAME", as_index=False)["bbref_id"].count()
+            .pipe(lambda df_: df_.loc[df_.bbref_id == 1])
+            .reset_index(drop=True)
+            .iloc[:, 0]
+            .to_list()
+        )
+        surname_set = nbastats_surname.intersection(bbref_surname)
+
+        comp_surname = (
+            self.non_merge_nbastats
+            .assign(SURNAME=lambda df_: [x.split()[1] for x in df_.DISPLAY_FIRST_LAST])
+            .pipe(lambda df_: df_.loc[df_.SURNAME.isin(surname_set)])
+            .reset_index(drop=True)
+            .pipe(lambda df_: df_.merge(
+                (
+                    self.non_merge_bbref
+                    .assign(SURNAME=lambda df_: [x.split()[1] for x in df_.name])
+                    .pipe(lambda df_: df_.loc[df_.SURNAME.isin(surname_set)])
+                    .reset_index(drop=True)
+                ),
+                how="inner",
+                on="SURNAME"
+            ))
+            .pipe(lambda df_: df_.loc[:, ["PERSON_ID", "DISPLAY_FIRST_LAST", "FROM_YEAR", "TO_YEAR",
+                                          "name", "url", "bbref_id", "from_year", "to_year"]])
+        )
+
+        merge_df = pd.concat([merge_df, comp_surname], axis=0, ignore_index=True)
+
+        self.upd_non_merge(merge_df)
+
+        nbastats_surname_year = (
+            self.non_merge_nbastats
+            .assign(
+                CNT_PART = lambda df_: [len(x.split()) for x in df_.DISPLAY_FIRST_LAST],
+                SURNAME=lambda df_: [x.split()[1] if y > 1 else None for x, y in zip(df_.DISPLAY_FIRST_LAST, df_.CNT_PART)]
+            )
+            .drop(columns="CNT_PART")
+        )
+
+        bbref_surname_year = (
+            self.non_merge_bbref
+            .assign(
+                CNT_PART=lambda df_: [len(x.split()) for x in df_.name],
+                SURNAME=lambda df_: [x.split()[1] if y > 1 else None for x, y in
+                                     zip(df_.name, df_.CNT_PART)]
+            )
+            .drop(columns="CNT_PART")
+        )
+
+        comp_surname_year = (
+            nbastats_surname_year
+            .astype({'FROM_YEAR': 'int', 'TO_YEAR': 'int'})
+            .pipe(lambda df_: df_.merge(
+                bbref_surname_year,
+                how="inner",
+                left_on=["SURNAME", "FROM_YEAR", "TO_YEAR"],
+                right_on=["SURNAME", "from_year", "to_year"]
+            ))
+            .pipe(lambda df_: df_.loc[~df_.PERSON_ID.isin([203183, 203502]),
+            ["PERSON_ID", "DISPLAY_FIRST_LAST", "FROM_YEAR", "TO_YEAR",
+             "name", "url", "bbref_id", "from_year", "to_year"]])
+            .reset_index(drop=True)
+        )
+
+        merge_df = pd.concat([merge_df, comp_surname_year], axis=0, ignore_index=True)
+
+        self.upd_non_merge(merge_df)
+
+        return merge_df
+
     def upd_non_merge(self, merge_df: pd.DataFrame) -> None:
         merge_bbref_id = merge_df.bbref_id
         merge_person_id = merge_df.PERSON_ID
