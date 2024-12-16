@@ -1,4 +1,11 @@
+from string import ascii_lowercase
+from pathlib import Path
+
+import requests
+from bs4 import BeautifulSoup
 import numpy as np
+import pandas as pd
+
 
 ENGLISH = np.hstack((np.arange(65, 91),np.arange(97, 123), np.array([32, 45, 46])))
 
@@ -53,3 +60,47 @@ MAPPING_DICT = {
     1629624: 'wooteke01',
     1642385: 'cuiyo01'
 }
+
+
+class PlayerDataBBref(object):
+
+    def __init__(self,
+                 base_url: str="https://www.basketball-reference.com/players",
+                 letters: str=ascii_lowercase,
+                 verbose: bool=False) -> None:
+        self.base_url = base_url
+        self.letters = letters
+        self.verbose = verbose
+        self.bbref_players: list[dict[str: str|int]] = []
+
+    def bbref_player_data(self) -> pd.DataFrame:
+        for letter in self.letters:
+            self.scrape_player_data(letter)
+            if self.verbose:
+                print(f"Letter: {letter} finished")
+        return pd.DataFrame(self.bbref_players)
+
+    def scrape_player_data(self, letter: str) -> None:
+        url = f"{self.base_url}/{letter}/"
+        response = requests.get(url)
+        soup = BeautifulSoup(response.content, 'lxml')
+        table = soup.find('table', {'id': 'players'})
+        if table:
+            rows = table.find('tbody').find_all('tr')
+
+            if len(rows) != 0:
+                for row in rows:
+                    player_name = row.find('th').get_text()
+                    player_url = row.find('th').find('a')['href'] if row.find('th').find('a') else None
+                    from_year = row.find("td", {"data-stat": "year_min"}).get_text() if row.find("td", {"data-stat": "year_min"}) else None
+                    to_year = row.find("td", {"data-stat": "year_max"}).get_text() if row.find("td", {"data-stat": "year_max"}) else None
+
+                    self.bbref_players.append({
+                        'name': player_name.replace("*", ""),
+                        'url': f"https://www.basketball-reference.com{player_url}" if player_url else None,
+                        'bbref_id': Path(player_url).stem if player_url else None,
+                        'from_year': int(from_year) - 1,
+                        'to_year': int(to_year) - 1
+                })
+        else:
+            raise ValueError(f"On page {url} there is no information about the players")
