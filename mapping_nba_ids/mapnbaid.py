@@ -2,11 +2,14 @@ from string import ascii_lowercase
 from pathlib import Path
 from typing import Optional
 from itertools import product
+import re
 
 import requests
 from bs4 import BeautifulSoup
 import numpy as np
 import pandas as pd
+from nba_api.stats.endpoints import CommonAllPlayers
+from Levenshtein import distance
 
 
 ENGLISH = np.hstack((np.arange(65, 91),np.arange(97, 123), np.array([32, 45, 46])))
@@ -476,3 +479,32 @@ class MergePlayerID(object):
         except KeyError:
             bbref_id = None
         return bbref_id
+
+class MappingBasketID(object):
+
+    def __init__(self):
+        pass
+
+    def __call__(self, *args, **kwargs):
+        self.verbose = kwargs.get("verbose", False)
+        self.bbref = kwargs.get("bbref", None)
+        self.nbastats = kwargs.get("nbastats", None)
+        self.letters = kwargs.get("letters", ascii_lowercase)
+        self.base_url = kwargs.get("base_url", "https://www.basketball-reference.com/players")
+        if self.bbref is None:
+            bbref_players = PlayerDataBBref(verbose=self.verbose, letters=self.letters, base_url=self.base_url)
+            self.bbref = bbref_players.bbref_player_data()
+        if self.nbastats is None:
+            self.nbastats = CommonAllPlayers().get_data_frames()[0]
+        merge_players = MergePlayerID(self.nbastats, self.bbref)
+        players_df = merge_players.merge_by_name()
+        players_df = merge_players.merge_double(players_df)
+        players_df = merge_players.merge_non_english(players_df)
+        players_df = merge_players.merge_surname(players_df)
+        players_df = merge_players.merge_surname(players_df)
+        players_df = merge_players.merge_wo_punctuation(players_df)
+        players_df = merge_players.merge_from_dict(players_df)
+
+        return players_df
+
+mapping_nba_id = MappingBasketID()
