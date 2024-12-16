@@ -1,5 +1,6 @@
 from string import ascii_lowercase
 from pathlib import Path
+from typing import Optional
 
 import requests
 from bs4 import BeautifulSoup
@@ -104,3 +105,64 @@ class PlayerDataBBref(object):
                 })
         else:
             raise ValueError(f"On page {url} there is no information about the players")
+
+
+class MergePlayerID(object):
+
+    def __init__(self,
+                 nbastats: pd.DataFrame,
+                 bbref: pd.DataFrame) -> None:
+        self.nbastats = (
+            nbastats
+            .assign(FIRST_LETTER = lambda df_: [x[:1].lower() for x in df_.DISPLAY_LAST_COMMA_FIRST])
+        )
+        self.bbref = bbref
+        self.zero_df: Optional[pd.DataFrame] = None
+        self.double_df: Optional[pd.DataFrame] = None
+        self.non_merge_bbref: Optional[pd.DataFrame] = None
+        self.non_merge_nbastats: Optional[pd.DataFrame] = None
+        self.full_coincidence_df: Optional[pd.DataFrame] = None
+
+    def merge_by_name(self) -> pd.DataFrame:
+        merge_index = []
+        zero_index = []
+        double_index = []
+        for idx, nba_name in enumerate(self.nbastats.loc[:, "DISPLAY_FIRST_LAST"]):
+            tmp_df = self.bbref.loc[self.bbref["name"] == nba_name]
+            if tmp_df.shape[0] == 1:
+                merge_index.append(idx)
+            elif tmp_df.shape[0] == 0:
+                zero_index.append(idx)
+            elif tmp_df.shape[0] > 1:
+                double_index.append(idx)
+            else:
+                raise ValueError("Error")
+
+        self.zero_df = self.nbastats.iloc[zero_index].reset_index(drop=True)
+        self.double_df = self.nbastats.iloc[double_index].reset_index(drop=True)
+
+        merge_df = (
+            self.nbastats
+            .iloc[merge_index]
+            .reset_index(drop=True)
+            .pipe(lambda df_: df_.loc[:, ["PERSON_ID", "DISPLAY_FIRST_LAST", "FROM_YEAR", "TO_YEAR"]])
+            .pipe(lambda df_: df_.merge(self.bbref, how="inner", left_on="DISPLAY_FIRST_LAST", right_on="name"))
+        )
+
+        self.upd_non_merge(merge_df)
+
+        return merge_df
+
+    def upd_non_merge(self, merge_df: pd.DataFrame) -> None:
+        merge_bbref_id = merge_df.bbref_id
+        merge_person_id = merge_df.PERSON_ID
+
+        if self.non_merge_bbref is not None:
+            self.non_merge_bbref = self.non_merge_bbref[~self.non_merge_bbref.bbref_id.isin(merge_bbref_id)].reset_index(drop=True)
+        else:
+            self.non_merge_bbref = self.bbref.loc[~self.bbref.bbref_id.isin(merge_bbref_id)].reset_index(drop=True)
+
+        if self.non_merge_nbastats is not None:
+            self.non_merge_nbastats = self.non_merge_nbastats[~self.non_merge_nbastats.PERSON_ID.isin(merge_person_id)].reset_index(drop=True)
+        else:
+            self.non_merge_nbastats = self.nbastats.loc[~self.nbastats.PERSON_ID.isin(merge_person_id)].reset_index(drop=True)
