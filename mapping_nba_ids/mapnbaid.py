@@ -63,7 +63,8 @@ MAPPING_DICT = {
     202358: 'whitete01',
     78539: 'williar01',
     1629624: 'wooteke01',
-    1642385: 'cuiyo01'
+    1642385: 'cuiyo01',
+    1631322: "mccoyja01"
 }
 
 
