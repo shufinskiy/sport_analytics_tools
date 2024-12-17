@@ -1,6 +1,6 @@
 from string import ascii_lowercase
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 from itertools import product
 import re
 
@@ -77,7 +77,7 @@ class PlayerDataBBref(object):
         self.base_url = base_url
         self.letters = letters
         self.verbose = verbose
-        self.bbref_players: list[dict[str: str|int]] = []
+        self.bbref_players: list[dict[str: Union[str, int]]] = []
 
     def bbref_player_data(self) -> pd.DataFrame:
         for letter in self.letters:
