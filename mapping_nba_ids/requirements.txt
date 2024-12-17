@@ -1,0 +1,7 @@
+nba_api>=1.4.0
+numpy>=1.22.2,<2.0.0
+pandas>=2.0.0
+Levenshtein==0.26.1
+beautifulsoup4>=4.10.0
+requests>=2.31.0
+lxml>=5.2.0
