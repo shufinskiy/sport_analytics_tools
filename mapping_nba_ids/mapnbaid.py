@@ -1,3 +1,8 @@
+"""
+Module for mapping NBA player IDs between different data sources.
+This module provides functionality to map player IDs between NBA Stats API and Basketball Reference.
+"""
+
 from string import ascii_lowercase
 from pathlib import Path
 from typing import Optional, Union
@@ -69,17 +74,41 @@ MAPPING_DICT = {
 
 
 class PlayerDataBBref(object):
+    """Class for scraping player data from Basketball Reference website.
+
+    This class handles the scraping of player data from basketball-reference.com,
+    organizing it by player name's first letter.
+
+    Attributes:
+        base_url (str): Base URL for basketball-reference player pages.
+        letters (str): Letters to iterate through for player lookup.
+        verbose (bool): If True, prints progress information during scraping.
+        bbref_players (list): List of dictionaries containing player information.
+    """
 
     def __init__(self,
                  base_url: str="https://www.basketball-reference.com/players",
                  letters: str=ascii_lowercase,
                  verbose: bool=False) -> None:
+        """Initialize PlayerDataBBref.
+
+        Args:
+            base_url (str, optional): Base URL for basketball-reference.com player pages.
+                Defaults to "https://www.basketball-reference.com/players".
+            letters (str, optional): Letters to iterate through. Defaults to ascii_lowercase.
+            verbose (bool, optional): Whether to print progress information. Defaults to False.
+        """
         self.base_url = base_url
         self.letters = letters
         self.verbose = verbose
         self.bbref_players: list[dict[str: Union[str, int]]] = []
 
     def bbref_player_data(self) -> pd.DataFrame:
+        """Scrape player data for all specified letters.
+
+        Returns:
+            pd.DataFrame: DataFrame containing player information from Basketball Reference.
+        """
         for letter in self.letters:
             self.scrape_player_data(letter)
             if self.verbose:
@@ -87,6 +116,14 @@ class PlayerDataBBref(object):
         return pd.DataFrame(self.bbref_players)
 
     def scrape_player_data(self, letter: str) -> None:
+        """Scrape player data for a specific letter.
+
+        Args:
+            letter (str): The letter to scrape player data for.
+
+        Raises:
+            ValueError: If no player information is found on the page.
+        """
         url = f"{self.base_url}/{letter}/"
         response = requests.get(url)
         soup = BeautifulSoup(response.content, 'lxml')
@@ -113,10 +150,30 @@ class PlayerDataBBref(object):
 
 
 class MergePlayerID(object):
+    """Class for merging player IDs between NBA Stats and Basketball Reference.
+
+    This class implements various methods to match and merge player identifiers
+    between NBA Stats API and Basketball Reference data sources.
+
+    Attributes:
+        nbastats (pd.DataFrame): DataFrame containing NBA Stats API player data.
+        bbref (pd.DataFrame): DataFrame containing Basketball Reference player data.
+        zero_df (pd.DataFrame, optional): Players with no matches.
+        double_df (pd.DataFrame, optional): Players with multiple matches.
+        non_merge_bbref (pd.DataFrame, optional): Unmatched Basketball Reference players.
+        non_merge_nbastats (pd.DataFrame, optional): Unmatched NBA Stats players.
+        full_coincidence_df (pd.DataFrame, optional): Players with full information matches.
+    """
 
     def __init__(self,
                  nbastats: pd.DataFrame,
                  bbref: pd.DataFrame) -> None:
+        """Initialize MergePlayerID.
+
+        Args:
+            nbastats (pd.DataFrame): NBA Stats API player data.
+            bbref (pd.DataFrame): Basketball Reference player data.
+        """
         self.nbastats = (
             nbastats
             .assign(FIRST_LETTER = lambda df_: [x[:1].lower() for x in df_.DISPLAY_LAST_COMMA_FIRST])
@@ -129,6 +186,11 @@ class MergePlayerID(object):
         self.full_coincidence_df: Optional[pd.DataFrame] = None
 
     def merge_by_name(self) -> pd.DataFrame:
+        """Merge players by exact name matches.
+
+        Returns:
+            pd.DataFrame: DataFrame of matched players by name.
+        """
         merge_index = []
         zero_index = []
         double_index = []
@@ -159,6 +221,14 @@ class MergePlayerID(object):
         return merge_df
 
     def merge_double(self, merge_df: pd.DataFrame) -> pd.DataFrame:
+        """Merge players with multiple potential matches.
+
+        Args:
+            merge_df (pd.DataFrame): Previously merged player data.
+
+        Returns:
+            pd.DataFrame: Updated DataFrame with additional matches.
+        """
         merge_double = (
             self.double_df
             .pipe(lambda df_: df_.loc[:, ["PERSON_ID", "DISPLAY_FIRST_LAST", "FROM_YEAR", "TO_YEAR"]])
@@ -198,6 +268,14 @@ class MergePlayerID(object):
         return merge_df
 
     def merge_non_english(self, merge_df: pd.DataFrame) -> pd.DataFrame:
+        """Merge players with non-English characters in their names.
+
+        Args:
+            merge_df (pd.DataFrame): Previously merged player data.
+
+        Returns:
+            pd.DataFrame: Updated DataFrame with additional matches.
+        """
         non_eng_idx = np.array([self._detect_non_english(x) for x in self.non_merge_bbref.name])
         non_eng = self.non_merge_bbref.iloc[non_eng_idx].reset_index(drop=True)
         non_eng["non_english_count"] = [self._count_non_english(x) for x in non_eng.name]
@@ -256,6 +334,14 @@ class MergePlayerID(object):
         return merge_df
 
     def merge_surname(self, merge_df: pd.DataFrame) -> pd.DataFrame:
+        """Merge players based on surname matches.
+
+        Args:
+            merge_df (pd.DataFrame): Previously merged player data.
+
+        Returns:
+            pd.DataFrame: Updated DataFrame with additional matches.
+        """
         nbastats_surname = set(
             self.non_merge_nbastats
             .assign(
@@ -344,6 +430,14 @@ class MergePlayerID(object):
         return merge_df
 
     def merge_wo_punctuation(self, merge_df: pd.DataFrame) -> pd.DataFrame:
+        """Merge players after removing punctuation from names.
+
+        Args:
+            merge_df (pd.DataFrame): Previously merged player data.
+
+        Returns:
+            pd.DataFrame: Updated DataFrame with additional matches.
+        """
         nba_letters = (
             self.non_merge_nbastats
             .assign(
@@ -428,7 +522,14 @@ class MergePlayerID(object):
         return merge_df
 
     def merge_from_dict(self, merge_df: pd.DataFrame) -> pd.DataFrame:
+        """Merge players using predefined mapping dictionary.
 
+        Args:
+            merge_df (pd.DataFrame): Previously merged player data.
+
+        Returns:
+            pd.DataFrame: Final merged DataFrame with all matches.
+        """
         comp_dict = (
             self.non_merge_nbastats
             .assign(bbref_id = lambda df_: [self._mapping_dict(x) for x in df_.PERSON_ID])
@@ -451,6 +552,11 @@ class MergePlayerID(object):
         return merge_df.drop(columns=["FROM_YEAR", "TO_YEAR", "from_year", "to_year"])
 
     def upd_non_merge(self, merge_df: pd.DataFrame) -> None:
+        """Update non-merged player lists after each merge operation.
+
+        Args:
+            merge_df (pd.DataFrame): Current merged player data.
+        """
         merge_bbref_id = merge_df.bbref_id
         merge_person_id = merge_df.PERSON_ID
 
@@ -466,15 +572,39 @@ class MergePlayerID(object):
 
     @staticmethod
     def _detect_non_english(names: str) -> bool:
+        """Detect if a name contains non-English characters.
+
+        Args:
+            names (str): Player name to check.
+
+        Returns:
+            bool: True if name contains non-English characters, False otherwise.
+        """
         ord_name = not all([ord(x) in ENGLISH for x in names])
         return ord_name
 
     @staticmethod
     def _count_non_english(names: str) -> int:
+        """Count number of non-English characters in a name.
+
+        Args:
+            names (str): Player name to check.
+
+        Returns:
+            int: Number of non-English characters found.
+        """
         return np.sum([ord(x) not in ENGLISH for x in names])
 
     @staticmethod
     def _mapping_dict(person_id: int) -> Optional[str]:
+        """Get Basketball Reference ID from mapping dictionary.
+
+        Args:
+            person_id (int): NBA Stats API player ID.
+
+        Returns:
+            Optional[str]: Basketball Reference ID if found, None otherwise.
+        """
         try:
             bbref_id = MAPPING_DICT[person_id]
         except KeyError:
@@ -482,11 +612,31 @@ class MergePlayerID(object):
         return bbref_id
 
 class MappingBasketID(object):
+    """Main class for mapping basketball player IDs between different sources.
+
+    This class orchestrates the entire process of mapping player IDs between
+    NBA Stats API and Basketball Reference data sources.
+    """
 
     def __init__(self):
+        """Initialize MappingBasketID."""
         pass
 
     def __call__(self, *args, **kwargs):
+        """Execute the complete ID mapping process.
+
+        Args:
+            **kwargs: Keyword arguments including:
+                verbose (bool): Whether to print progress information.
+                bbref (pd.DataFrame): Existing Basketball Reference data.
+                nbastats (pd.DataFrame): Existing NBA Stats data.
+                letters (str): Letters to scrape from Basketball Reference.
+                base_url (str): Base URL for Basketball Reference.
+
+        Returns:
+            pd.DataFrame: Complete mapping between NBA Stats and Basketball Reference IDs.
+        """
+
         self.verbose = kwargs.get("verbose", False)
         self.bbref = kwargs.get("bbref", None)
         self.nbastats = kwargs.get("nbastats", None)
