@@ -23,7 +23,7 @@ Through this project, I aim to create a comprehensive knowledge base of tools an
 
 ## List of Projects
 
-### 1. mapping_nba_ids 🏀
+### 1. NBA Player ID Mapping Tool 🏀
 Tool for mapping player IDs between NBA Stats API and Basketball Reference.
 
 #### Features
