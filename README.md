@@ -36,13 +36,13 @@ Tool for mapping player IDs between NBA Stats API and Basketball Reference.
 - Python 3.8+
 - Core dependencies: beautifulsoup4, numpy, pandas, requests, nba_api, python-Levenshtein
 
-[Learn more about mapping_nba_ids →](https://github.com/shufinskiy/sport_analytics_tools/tree/main/mapping_nba_ids)
+[Learn more about NBA Player ID Mapping Tool →](https://github.com/shufinskiy/sport_analytics_tools/tree/main/mapping_nba_ids)
 
 ## Project Table
 
 |Name|Description|
 |------|---------|
-|[mapping_nba_ids](https://github.com/shufinskiy/sport_analytics_tools/tree/main/mapping_nba_ids)| Code automating the process of mapping ID from the NBA website and basketball-reference|
+|[NBA Player ID Mapping Tool](https://github.com/shufinskiy/sport_analytics_tools/tree/main/mapping_nba_ids)| Code automating the process of mapping ID from the NBA website and basketball-reference|
 
 ## Installation
 
