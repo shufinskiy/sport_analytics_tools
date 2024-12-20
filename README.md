@@ -64,7 +64,7 @@ Contributions are welcome! Please feel free to submit pull requests, particularl
 - Bug fixes and optimizations
 
 ## License 📄
-MIT License
+Apache License 2.0
 
 ## Contact 📫
 
