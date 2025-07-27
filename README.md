@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/shufinskiy/sport_analytics_tools/blob/main/sat_logo.jpeg"/>
+  <img src="https://github.com/shufinskiy/sport_analytics_tools/blob/main/sat_logo_v2.jpeg"/>
 </p>
 
 <h1 align="center">Sport Analytics Tools</h1>
