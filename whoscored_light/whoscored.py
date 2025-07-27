@@ -168,5 +168,10 @@ def whoscored_read_event(
 
 
 if __name__ == "__main__":
-    df = whoscored_read_event(1916923)
-    print(df.shape)
+    events = whoscored_read_event(1916923)
+    events_spadl = whoscored_read_event(1916923, output_fmt="spadl")
+    events_atomic = whoscored_read_event(1916923, output_fmt="atomic-spadl")
+
+    assert events.shape == (1514, 26)
+    assert events_spadl.shape == (1530, 16)
+    assert events_atomic.shape == (2622, 15)
