@@ -21,6 +21,13 @@ The goal of this project is to assist people interested in sports data science i
 
 Through this project, I aim to create a comprehensive knowledge base of tools and resources to enhance the workflow with sports data.
 
+## Project Table
+
+|Name|Description|
+|------|---------|
+|[NBA Player ID Mapping Tool](https://github.com/shufinskiy/sport_analytics_tools/tree/main/mapping_nba_ids)| Code automating the process of mapping ID from the NBA website and basketball-reference|
+|[whoscored_light](https://github.com/shufinskiy/sport_analytics_tools/tree/main/whoscored_light)| A lightweight Python module for quickly retrieving football match event data from [WhoScored.com](https://whoscored.com) using a provided `match_id`.|
+
 ## List of Projects
 
 ### 1. NBA Player ID Mapping Tool 🏀
@@ -38,11 +45,27 @@ Tool for mapping player IDs between NBA Stats API and Basketball Reference.
 
 [Learn more about NBA Player ID Mapping Tool →](https://github.com/shufinskiy/sport_analytics_tools/tree/main/mapping_nba_ids)
 
-## Project Table
+### 2. whoscored_light ⚽️
+A lightweight Python module for quickly retrieving football match event data from [WhoScored.com](https://whoscored.com) using a provided `match_id`. Supports direct export to multiple formats:
+- `event`
+- `spadl`
+- `atomic-spadl`
 
-|Name|Description|
-|------|---------|
-|[NBA Player ID Mapping Tool](https://github.com/shufinskiy/sport_analytics_tools/tree/main/mapping_nba_ids)| Code automating the process of mapping ID from the NBA website and basketball-reference|
+#### Features
+- Fast, direct event retrieval by `match_id` (no schedule/tournament setup needed)
+- Outputs in multiple formats for downstream analysis
+- In-memory conversion to SPADL/atomic-SPADL (no disk I/O)
+- Works for matches outside major European leagues and one-off games
+
+#### When to Use
+- Quick analysis of individual matches (especially outside Big Five leagues)
+- Immediate access to event data in SPADL/atomic-SPADL formats
+
+#### Limitations
+- Manual entry of `match_id` required
+- Not intended for bulk downloads or production systems
+
+[Learn more about whoscored_light →](https://github.com/shufinskiy/sport_analytics_tools/tree/main/whoscored_light)
 
 ## Installation
 
@@ -51,8 +74,6 @@ Tool for mapping player IDs between NBA Stats API and Basketball Reference.
 git clone https://github.com/shufinskiy/sport_analytics_tools.git
 cd sport_analytics_tools
 
-# Install dependencies
-pip install -r requirements.txt
 ```
 
 ## Contributing 🤝
