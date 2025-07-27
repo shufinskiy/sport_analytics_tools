@@ -67,7 +67,7 @@ See [LICENSE](../LICENSE) for details.
 
 ## Credits
 
-Inspired by [soccerdata](https://github.com/voetbalai/soccerdata) and [spadl](https://github.com/ML-KULeuven/socceraction).
+Inspired by [soccerdata](https://github.com/probberechts/soccerdata) and [socceraction](https://github.com/ML-KULeuven/socceraction).
 
 ---
 For questions or contributions, please open an issue or pull request.
