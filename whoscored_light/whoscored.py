@@ -14,6 +14,34 @@ def whoscored_read_event(
         path_to_browser: str = "/usr/bin/google-chrome",
         headless: bool = True
 ) -> pd.DataFrame:
+    """
+    Retrieves and transforms soccer match event data from WhoScored.com.
+
+    This function uses a Selenium-based browser to load the match page and extract
+    structured JSON data embedded in the page's JavaScript. The data can be returned
+    either in raw "events" format, SPADL format, or atomic-SPADL format.
+
+    Args:
+        match_id (int): The numeric ID of the match on WhoScored.com.
+        output_fmt (str, optional): The desired output format. Options are:
+            - "events": raw WhoScored event data
+            - "spadl": converted SPADL format (requires `socceraction`)
+            - "atomic-spadl": atomic SPADL format (requires `socceraction`)
+            Defaults to "events".
+        path_to_browser (str, optional): Path to the Chrome binary to use with Selenium.
+            Defaults to "/usr/bin/google-chrome".
+        headless (bool, optional): Whether to run the browser in headless mode.
+            Defaults to True.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing the match events in the specified format.
+
+    Raises:
+        ImportError: If `output_fmt` is "spadl" or "atomic-spadl" but the `socceraction`
+            package is not installed.
+        ValueError: If `output_fmt` is not one of the expected values.
+    """
+
     driver = sb.Driver(
         uc=True,
         headless=headless,
