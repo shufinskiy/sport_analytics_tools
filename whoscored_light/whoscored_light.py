@@ -19,12 +19,13 @@ def whoscored_read_event(
 
     This function uses a Selenium-based browser to load the match page and extract
     structured JSON data embedded in the page's JavaScript. The data can be returned
-    either in raw "events" format, SPADL format, or atomic-SPADL format.
+    either in raw format, events format, SPADL format, or atomic-SPADL format.
 
     Args:
         match_id (int): The numeric ID of the match on WhoScored.com.
         output_fmt (str, optional): The desired output format. Options are:
-            - "events": raw WhoScored event data
+            - "raw": raw JSON-responce from Whoscored.com
+            - "events": WhoScored event data
             - "spadl": converted SPADL format (requires `socceraction`)
             - "atomic-spadl": atomic SPADL format (requires `socceraction`)
             Defaults to "events".
@@ -58,6 +59,9 @@ def whoscored_read_event(
     reader.seek(0)
 
     json_data = json.load(reader)
+
+    if output_fmt == "raw":
+        return json_data
 
     events = {}
     player_names = {}
@@ -119,7 +123,6 @@ def whoscored_read_event(
                 "team_id": int(assertget(attr, "teamId")),
                 "player_id": int(attr.get("playerId")) if "playerId" in attr else None,
                 "type_id": int(assertget(eventtype, "value")),
-                # type_name=assertget(eventtype, "displayName"),  # added in the opta loader
                 # Fields required by the opta schema
                 # Timestamp is not availe in the data stream. The returned
                 # timestamp  is not accurate, but sufficient for camptability
@@ -142,8 +145,6 @@ def whoscored_read_event(
                 "touch": bool(attr.get("isTouch", False)),
                 "goal": bool(attr.get("isGoal", False)),
                 "shot": bool(attr.get("isShot", False)),
-                # assist=bool(attr.get('assist')) if "assist" in attr else None,
-                # keypass=bool(attr.get('keypass')) if "keypass" in attr else None,
             }
 
         df_events = (
@@ -174,7 +175,6 @@ def whoscored_read_event(
 
         from soccerdata.whoscored import COLS_EVENTS
 
-        # add missing columns
         for col, default in COLS_EVENTS.items():
             if col not in df.columns:
                 df[col] = default
@@ -196,10 +196,12 @@ def whoscored_read_event(
 
 
 if __name__ == "__main__":
+    raw = whoscored_read_event(1916923, output_fmt="raw")
     events = whoscored_read_event(1916923)
     events_spadl = whoscored_read_event(1916923, output_fmt="spadl")
     events_atomic = whoscored_read_event(1916923, output_fmt="atomic-spadl")
 
+    assert isinstance(raw, dict)
     assert events.shape == (1514, 26)
     assert events_spadl.shape == (1530, 16)
     assert events_atomic.shape == (2622, 15)

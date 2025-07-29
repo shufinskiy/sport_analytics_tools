@@ -47,6 +47,7 @@ Tool for mapping player IDs between NBA Stats API and Basketball Reference.
 
 ### 2. whoscored_light ⚽️
 A lightweight Python module for quickly retrieving football match event data from [WhoScored.com](https://whoscored.com) using a provided `match_id`. Supports direct export to multiple formats:
+- `raw`
 - `event`
 - `spadl`
 - `atomic-spadl`
