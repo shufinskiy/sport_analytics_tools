@@ -25,8 +25,9 @@ Through this project, I aim to create a comprehensive knowledge base of tools an
 
 |Name|Description|
 |------|---------|
-|[NBA Player ID Mapping Tool](https://github.com/shufinskiy/sport_analytics_tools/tree/main/mapping_nba_ids)| Code automating the process of mapping ID from the NBA website and basketball-reference|
+|[NBA Player ID Mapping Tool](https://github.com/shufinskiy/sport_analytics_tools/tree/main/mapping_nba_ids)| Code automating the process of mapping IDs between the NBA website and basketball-reference|
 |[whoscored_light](https://github.com/shufinskiy/sport_analytics_tools/tree/main/whoscored_light)| A lightweight Python module for quickly retrieving football match event data from [WhoScored.com](https://whoscored.com) using a provided `match_id`.|
+|[FIFA WC PDF Parser](https://github.com/shufinskiy/sport_analytics_tools/tree/main/fifa_wc)| Parses FIFA World Cup 2026 Post Match Summary Report PDFs into structured JSON using coordinate-based extraction.|
 
 ## List of Projects
 
@@ -48,12 +49,12 @@ Tool for mapping player IDs between NBA Stats API and Basketball Reference.
 ### 2. whoscored_light ⚽️
 A lightweight Python module for quickly retrieving football match event data from [WhoScored.com](https://whoscored.com) using a provided `match_id`. Supports direct export to multiple formats:
 - `raw`
-- `event`
+- `events`
 - `spadl`
 - `atomic-spadl`
 
 #### Features
-- Fast, direct event retrieval by `match_id` (no schedule/tournament setup needed)
+- Fast, direct event retrieval by `match_id` (no schedule or tournament setup needed)
 - Outputs in multiple formats for downstream analysis
 - In-memory conversion to SPADL/atomic-SPADL (no disk I/O)
 - Works for matches outside major European leagues and one-off games
@@ -68,13 +69,44 @@ A lightweight Python module for quickly retrieving football match event data fro
 
 [Learn more about whoscored_light →](https://github.com/shufinskiy/sport_analytics_tools/tree/main/whoscored_light)
 
+### 3. FIFA WC PDF Parser 🏆
+Tools for extracting data from [FIFA World Cup 2026 Post Match Summary Report](https://www.fifatrainingcentre.com/en/fifa-world-cup-2026/match-report-hub.php) (PMSR) PDFs into structured JSON. The project provides two approaches — choose based on your setup:
+
+#### Option 1: Claude Prompt (`parse_fifa_report_prompt.md`)
+A ready-to-use prompt for Claude models. Attach the PDF and the prompt to a Claude conversation; the model reads every page and returns a single `result.json` covering all 44 data pages.
+
+- Tested on **claude-opus-4-8** (high thinking) and **claude-sonnet-4-6** (low thinking)
+- No local dependencies required
+- Handles ambiguous layouts and donut charts through model reasoning
+
+#### Option 2: Programmatic Parser (`parse_fifa_report.py`)
+A Python script for purely programmatic, coordinate-based extraction using `PyMuPDF` — no LLM calls.
+
+- Parses all 44 data pages of the PMSR template (8 divider/logo pages are skipped)
+- Extracts lineups, formations, goals, cards, and substitutions
+- Captures team and per-player statistics: line breaks, passing networks, crosses, shots, defensive actions, physical data, set plays, goalkeeping, and more
+- Decodes donut charts using arc geometry (`page.get_drawings()`) to recover category breakdowns
+- Outputs a single, deeply nested `result.json` with a consistent generic schema (`home_team` / `away_team` keys) reusable across any fixture
+
+**Usage:**
+```bash
+python fifa_wc/parse_fifa_report.py <path/to/report.pdf> [output.json]
+```
+
+**Requirements:** `PyMuPDF` (`pip install pymupdf`)
+
+**Limitations:**
+- Hardcoded pixel x-coordinate maps are calibrated to the FIFA 2026 PMSR layout; a different report template may require recalibration
+- Passing network player-to-player matrices are partially reconstructed (zero cells collapse in the text export); a `_note` is added to affected pages
+
+[Learn more about FIFA WC →](https://github.com/shufinskiy/sport_analytics_tools/tree/main/fifa_wc)
+
 ## Installation
 
 ```bash
 # Clone the repository
 git clone https://github.com/shufinskiy/sport_analytics_tools.git
 cd sport_analytics_tools
-
 ```
 
 ## Contributing 🤝
